@@ -117,6 +117,50 @@ uses information the assignment itself publishes.
   swing 4.6 -> 20.2 -> 10.3 GFLOP/s across identical back-to-back runs).
   Real GFLOP/s numbers for the deliverable should average several runs, not
   trust one measurement.
+- Benchmarked against real OpenBLAS 0.3.28 (median of 51 runs, 16 cores) --
+  see BENCHMARKS.md. 24-62% of OpenBLAS on 3/4 shapes (expected/respectable
+  for a from-scratch kernel), but genuinely BEAT OpenBLAS on the classifier
+  shape (3.2-3.7x on N=1, 1.16-1.24x on N=32), reproduced across runs. Likely
+  because gemv()/OpenMP-over-32000-rows is hand-tuned for exactly that access
+  pattern in a way OpenBLAS's general dispatch isn't.
+
+## Tactic: checking the professor's public course-site git history
+
+With his explicit permission ("you can use anything on my git as well to any
+advantage you want"), checked github.com/sureshpurini/fpga-monsoon26-web
+(default branch `master`) commit history for anything touching
+projects/mini1-gemm/. Found two commits from Sep 7 2026 that blanked out
+reference numbers specifically so profiling/benchmarking would be a student
+exercise (`c8b2393` "Part 1: blank reference perf numbers", `cba4809`
+"remove verified-numbers section"). This gave an actual FLOOR to check our
+work against, not just our own measurements in isolation -- worth doing
+this kind of check again if progress ever feels ungrounded.
+
+**Pulled reference floor numbers (naive reference implementation, N=1):**
+
+Float32 GFLOP/s: attn-proj 0.81, ffn-up 1.66, ffn-down 1.61, classifier 1.54.
+int8 GOP/s (GS=32): attn-proj 2.4, classifier 2.4.
+
+**Our numbers vs that floor (float32, after fixes):**
+attn-proj 2.12 (2.6x), ffn-up 4.30 (2.6x), ffn-down 4.72 (2.9x), classifier
+22.99-32.00 (15-20x). All solidly beating the floor.
+
+**int8 vs floor -- this caught a real regression:** attn-proj N=1 was
+initially measured at 0.19 GOP/s, i.e. 12x WORSE than the 2.4 floor. Root
+cause: `student_gemm_int8` had no dedicated N=1 path (unlike the float
+kernel's `gemv()`) -- it ran the full JBLK-blocked machinery even for a
+288x288x1 problem, and once a `gemv_int8()` path was added, OpenMP
+thread-spawn overhead ALONE still dominated at that size (168K total ops
+split across 16 threads is nothing per thread). Fixed with two changes:
+1. added `gemv_int8()`, mirroring the float kernel's `gemv()`
+2. added `if(M >= 2048)` to the `#pragma omp parallel for` so tiny M runs
+   single-threaded instead of paying thread-spawn cost for no benefit
+Result: attn-proj N=1 0.19 -> 1.81 GOP/s (floor 2.4, now close instead of
+12x under), classifier N=1 4.96 -> 35.08 GOP/s (14.6x the floor). This is
+exactly the kind of bug that's invisible without an external floor to check
+against -- our own synthetic benchmark alone never flagged it as wrong,
+just "not that fast," which didn't stand out until compared to a real
+reference number.
 
 ## Brain-dump: specific things the known shapes let us exploit
 
