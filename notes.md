@@ -208,3 +208,221 @@ Unsorted, unverified, to try/benchmark later — not yet implemented.
   (weights are packed once, reused for every token). Need to see
   `test_gemm.sh` to know if this is even observable/fair, or if it's closer
   to the "gaming" line we discussed — flag for later, don't build yet.
+
+## Oct 5: real starter kit landed (mini1-gemm-starter.zip) -- what it changed
+
+Contract confirmed against the real headers/reference:
+- `student_gemm` signature identical. int8 scale layout we ASSUMED is exactly
+  right: `As[i*(K/GS)+g]`, `Bs[g*N+j]` (the .h formula comment says Bs[j,g] but
+  the stated layout and the reference code are g*N+j -- code is authoritative).
+- Official tests: `gcc -O3 ... -lm` ONLY. No -march/-mavx2/-fopenmp, "one CPU
+  core", single cold call timed. Everything we measured before with
+  `-march=native -fopenmp` was NOT what gets scored.
+- Tolerances: float 1e-2 absolute; int8 1e-4 PER-ELEMENT RELATIVE, and the
+  reference is bit-exact against its golden.
+
+Bugs the official harness caught that our own benchmarks had hidden:
+1. int8 FAILED the real tester (4/8 cases). We multiplied `dot*As*Bs`; the
+   reference does `(As*Bs)*dot`. Different float rounding order -> relative error
+   blows up on near-zero outputs (we had seen maxrel=0.14 in our own bench and
+   dismissed it as a near-zero artifact -- wrong, the official tester counts
+   exactly that). Fix: match the reference's operation order. Now bit-exact.
+2. Our AVX2/FMA + OpenMP were gated on compile flags the harness never passes,
+   so the graded build silently ran the scalar fallback. Fix: function-level
+   `__attribute__((target("avx2,fma")))` + runtime `__builtin_cpu_supports`
+   dispatch (no build flags needed, scalar fallback if CPU lacks it).
+3. attn-proj N=1 was BELOW the reference floor (0.64 vs 2.47) only on the first
+   call. Steady state was 16us vs reference 78us; first call was 635us. Cause:
+   `float Bpack[NC*KC]; float Apack[MC*KC];` as locals = ~640KB stack frame;
+   Windows page-faults the whole frame on first call even when the N=1 path
+   returns early. Fix: grow-only thread-local malloc'd buffers sized to need.
+   Found by timing 5 consecutive calls instead of guessing (two earlier guesses
+   -- cpuid cost, AVX warm-up -- were wrong and disproved by experiments).
+4. N=1 float path: scalar gemv was latency-bound on a single accumulator;
+   now 8-lane / 4x-vector accumulators. OpenMP in gemv gated on M>=2048.
+
+Where we stand (details in BENCHMARKS.md): official float PASS 8/8, ~2-7x
+reference depending on shape/N; int8 PASS bit-exact at N=1/8/32/64, ~1.2-6x
+reference (N=8 is weakest). vs OpenBLAS (sgemv for N=1, sgemm for N=32): only
+classifier N=32 is a clear win (1.18x); classifier N=1 ties; the rest are
+38-69%. CORRECTION: an earlier note here claimed 2.5-3.4x wins at N=1 -- that
+was vs sgemm-on-a-vector, an unfair baseline; retracted.
+
+Still open: int8 has no AVX2 path (compiler auto-vectorizes at SSE2 baseline
+under the official flags) -- the obvious next win is target("avx2") on the int8
+inner loops; V8 tuning sweep; strategy writeup.
+New in the starter kit worth reading before Part 2/3: slm_backend.c,
+hardware-run.md, final-starter (kernel.cpp, hls_config.cfg, Makefile), and the
+website says the graded submission involves a U50 bitstream (Moodle handout).
+
+## Oct 5 (later): optimisation round -- what moved the numbers
+
+Yardstick fix first: this OpenBLAS is an OpenMP build, so OPENBLAS_NUM_THREADS=1
+is ignored (reported 16 threads) -- earlier "single-core" OpenBLAS numbers were
+secretly 16-thread. Use OMP_NUM_THREADS=1. Also the unfair-baseline retraction:
+N=1 must be compared against sgemv, not sgemm (BENCHMARKS.md has the details).
+
+1. Float microkernel 4x8 -> 6x16 (12 accumulators, 6 broadcasts x 2 B vectors,
+   MC=120/KC=256/NC=512, full tiles accumulate straight into C instead of via a
+   tmp copy). Reason: 4 independent FMA chains cannot hide FMA latency (~4
+   cycles x 2 ports needs >=8). Single-core vs OpenBLAS at N=32: 0.5-0.6x ->
+   ~0.8-0.9x; official-harness N=32 roughly doubled. Passes 16/16 + 28/28.
+2. int8 AVX2 path: sign-extend int8->int16, _mm256_madd_epi16 on interleaved
+   B row pairs (two k at once per instruction), int32 accumulate, scale at the
+   group boundary. Compiled with target("avx2") ONLY (no fma) on purpose: with
+   FMA enabled gcc may contract the float mul+add and break the bit-exactness
+   the 1e-4 relative tester needs. Added an 8-wide strip because N=8 was
+   falling entirely into the scalar tail (4 -> 15-21 GOP/s). Bit-exact at
+   N=1,3,7,8,24,33,40,64,100. 5-25x the reference depending on shape/N.
+3. Not done / ideas left: AVX-VNNI (this CPU has it, grader unknown), tuning
+   MC/KC/NC (V8), prefetch for N=1, shape-specialised dispatch, packing C
+   writeback fusion. Float is now near OpenBLAS parity on one core, so further
+   float gains will be small and hard to measure on this noisy machine.
+
+## Oct 5 (latest): shape/N specialisation vs OpenBLAS
+
+Question was whether overfitting to the known shapes could beat BLAS. Answer:
+yes, modestly and only in the regime we specialise (N <= 64, these four
+shapes, single thread). Changes in student_gemm.c:
+- N 9..64: `gemm_n16_avx2` -- pack only B (K x N, tiny), read A directly from 6
+  row streams (no A packing), full K in one pass (no KC blocking, C written once,
+  so no memset/accumulate). N 2..8: `gemm_n8_avx2`, 12 rows x 8 cols so the
+  vector is not half wasted. N=1: 8-row gemv sharing each B load across 8 FMAs.
+  N > 64 still uses the general packed 6x16 path.
+- Median ratio vs single-thread OpenBLAS over 3 runs: N=8 1.2-1.8x, N=32
+  1.13-1.22x, N=64 1.06-1.12x, N=1 0.97-1.27x (attn-proj N=1 is a tie).
+- Verified: official float 16/16, 64/64 over 16 N values, 847 random (M,K,N)
+  combos vs a naive double reference (C pre-filled with garbage to prove the
+  new assign-not-accumulate paths overwrite everything), int8 still bit-exact.
+  ASan/UBSan not available on this MinGW, so no sanitizer run.
+Resume-safe wording: "shape-specialised AVX2 GEMM; ~1.1-1.8x single-thread
+OpenBLAS sgemm/sgemv on four fixed shapes for N<=64" -- NOT "beats BLAS".
+Untested: N>64, other shapes, other CPUs. Open ideas: tune MC/KC/NC for the
+N>64 path, AVX-VNNI int8 (CPU has it, grader unknown).
+
+## Oct 5: Part 2 seam verified end to end (CPU, TinyStories 15M)
+
+Built llama2.c + stories15M.bin in a scratch dir and ran the course's own seam
+(slm_backend.c: matmul -> student_gemm(w, x, xout, d, n, N=1)) with plain
+`gcc -O3`. Same prompt/seed/-t 0:
+- generated story BYTE-IDENTICAL to stock llama2.c, with both the reference
+  GEMM and ours (correctness through the real model confirmed).
+- tok/s over 5 runs, same machine: reference GEMM 59-88, ours 181-253
+  (~2.5-3.5x). Stock run.c ~106 (single run).
+Environment notes (not our code): GCC 14 turns implicit-function-declaration
+(the renamed matmul) and incompatible-pointer-types (llama2.c's win.c shim on
+Windows) into hard errors; I built with -Wno-error=... for both and win.c added
+to the link. The course scripts will hit the first one on any GCC >= 14.
+Still to do for Part 2: scripts/profile.sh + the Amdahl/"which shape dominates"
+questions on his site; the U50 hardware run is PART 2 section 2.4/2.6 (not separate, not Part 3): bitstream built on RCE, host seam student_gemm_fpga.cpp, submitted via portal, tok/s comes back as 'your real hardware number for the Part 2 write-up'.
+Part 3 = CPU-side int8: runq golden + an int8_backend.c seam we write ourselves (not in the zip) + precision sweep (int8 GS=64/32, int4) on 3 axes: tok/s, memory, story quality. No hardware in Part 3.
+
+## Part 2 profile (course profile.sh method, 256 tokens greedy, 15M model)
+
+Measured with the course's mkprof.py wrapper plus one added elapsed-time line so
+f is measured, not estimated. Five runs each, this laptop, plain gcc -O3.
+
+Question 1 -- matmul fraction f (stock matmul): 91.8-95.7% of runtime (mean ~94%).
+Amdahl cap for accelerating only GEMMs: 1/(1-f) = ~12x (f=.918) to ~23x
+(f=.957), ~17x at the mean. Our kernel got ~2.5-3.5x (tok/s 73-104 -> 214-301),
+far below the cap. With OUR kernel plugged in, f drops to 82-92% (mean ~86%):
+the non-matmul remainder (norms, softmax, sampling, startup) is now 8-18% of
+the run, so a further infinitely-fast GEMM would cap at ~7x over our current.
+(elapsed includes model/tokenizer load and printing, so f is slightly low.)
+
+Question 2 -- which shape dominates (share of matmul time, stock):
+  288->32000 classifier 64.9% | 288->768 (w1,w3) 15.3% | 288->288 (attn) 10.3%
+  | 768->288 (w2) 9.5%.   (calls: 222 / 2664 / 5328 / 1332)
+So the classifier dominates, NOT the FFN (FFN total ~25%): "profile, don't
+assume" -- the 32000-token vocab makes the classifier the FLOP monster even
+though it is called once per token. With our kernel: classifier 59.9%, w1/w3
+29.2%, attn 6.5%, w2 4.4% (the 288->768 shape is now relatively the slowest
+per FLOP -- worth a look). Hardware implication: if only the top of the profile
+is offloaded, the classifier alone is ~2/3 of matmul time.
+His removed reference numbers said 71.6 tok/s and f=84% on his machine; ours
+reads 73-104 tok/s and f~94% -- same story, different machine/compiler.
+
+## Part 2, everything before the FPGA (done on CPU, Oct 5-6)
+
+Files (repo): part2/batch_bench.c (batched forward pass, #includes llama2.c's
+run.c unchanged), part2/slm_backend_select.c (offload only chosen shapes).
+Build (Windows/GCC14): gcc -O3 -w -Wno-error=incompatible-pointer-types
+-Wno-error=implicit-function-declaration -I<llama2.c> -I<starter/src>
+part2/batch_bench.c <llama2.c>/win.c student_gemm.c -lm ; run from the llama2.c
+dir (tokenizer.bin is read from CWD). Usage: batch_bench model.bin B steps [check|show].
+
+1. build_slm seam: story BYTE-IDENTICAL to stock with ours (done earlier).
+2. Profile + Amdahl (see section above): f ~94% stock, classifier 65% of matmul.
+3. Batched forward (B independent streams, each matmul = student_gemm with N=B,
+   activations gathered into K x B matrices; RoPE/attention/norms stay
+   per-stream). Verified vs stock forward(): worst logit diff 4.5e-5, 0 argmax
+   mismatches in 704 comparisons (B = 1,3,8,32; 16 steps).
+4. tok/s vs N (aggregate tokens/s, 256 steps, median of 5 interleaved runs,
+   cheap sampler so top-p sorting does not pollute it):
+     N=1 296 | N=2 263 | N=4 447 | N=8 729 | N=16 782 | N=32 510 | N=64 681
+   (run-to-run spread is large on this laptop: e.g. N=8 427-837.)
+   Time split at N=1: gemm ~89%; at N=16-64: gemm 41-49%, sampling ~15%,
+   other (per-stream attention, rope, norms, gather/scatter) 36-44%.
+   Reading: single-stream is memory-bound (N=2 is even slightly BELOW N=1:
+   the N<=8 kernel pads to 8 lanes); batching lifts it ~2.5x to a ceiling of
+   ~700-800 tok/s, after which the non-GEMM part dominates (Amdahl again).
+   UNVERIFIED hypotheses for the N=32 dip: per-stream KV caches (3.5 MB each,
+   113 MB at N=32) falling out of cache during attention. Not measured.
+5. Per-shape offload step at N=1 (tok/s median of 7, stock naive -> ours):
+     none 118 | classifier only 166 | +w1/w3 172 | +w2 248 | +attn (all) 288
+   i.e. the classifier alone gives the biggest single step, consistent with it
+   being 65% of matmul time. This is the offload priority list for the U50.
+Not done / optional: prefill variant (N = prompt length), a plotted figure.
+Remaining Part 2: the FPGA side only (HLS kernel src/kernel.cpp top 'gemm',
+host seam student_gemm_fpga.cpp, hw bitstream on RCE ~1h, portal submission).
+final-starter files (kernel.cpp, kernel_tb.cpp, hls_config.cfg, Makefile,
+slurm.sh) not yet read.
+
+## Oct 6: final-starter read (the graded FPGA deliverable)
+
+mini1-gemm-final-starter.zip = "a GEMM kernel on the U50". Write ONE HLS kernel,
+src/kernel.cpp, top `extern "C" void gemm(A,B,C,M,K,N)` (m_axi A/B/C, bundles
+gmem0/1/2, M/K/N s_axilite, row-major float32). One bitstream must handle all
+shapes: (M,K) in {288x288, 768x288, 288x768, 32000x288} at N=1 and 32, plus
+square 768^3 (so K<=768, M<=32000, N<=768, any N>=1).
+Workflow (README): make csim (secs) -> make cosim (mins; depth= in kernel.cpp
+must equal COSIM_*_ELEMS in kernel_tb.cpp) -> ./slurm.sh hw (~1h, account
+cs2401, build dir build/hw/gemm.xclbin) -> HW_TOKEN=<token> make submit (from
+login node) -> results at http://10.4.25.39:18080/?token=... ; leaderboard at
+/leaderboard (campus network). Clock target 3.33ns (300 MHz). Never build on
+the login node (sinteractive -c 8 -A cs2401 for quick steps).
+Scoring: 9 cases (all must be within 1e-2), three scores in ms of kernel time:
+square (leaderboard ranks by this), N=1 sum of 4 shapes, N=32 sum of 4 shapes;
+then a 256-token TinyStories run with every matmul on the kernel -> tok/s.
+Placeholder = 2 tok/s (II=8), "simple tiled" ~7 tok/s, "well-optimized much
+higher". Limits: 5 min for the 9 cases, 3 min for the story. Submissions run one
+at a time (~1 min each); resubmitting while queued replaces the earlier one.
+Needs from the instructor: a personal HW_TOKEN (do we have it?).
+What I can/cannot do from this Windows box: write kernel.cpp and check functional
+correctness by compiling kernel_tb.cpp with plain g++ (HLS pragmas are ignored);
+CANNOT check II/timing/resources/cosim/hw -- those need RCE (Vitis 2025.1).
+Hints from the README: N=1 is bandwidth-bound (wide ports, long bursts, many
+MACs in flight); N>1: buffer tiles on-chip; split the accumulator into several
+partial sums to reach II=1 (same L3/L4 ideas as the lecture handout).
+
+
+## Oct 6 night: FPGA bring-up log (v3 -> v5)
+- csim on RCE PASS (all 9). v2/v3 csynth: all loops II=1, A/B read as 512-bit bursts (max_widen_bitwidth=512 plus the
+  aligned (base16+t)*16+q addressing trick works). The GEMV A-tile load was II=2 until a DEPENDENCE inter-false
+  pragma was added. fadd core = 7-cycle DSP; fmul = 4-cycle.
+- Timing diagnosis: both compute loops had a single `fadd`(2.342 ns)->store critical path (est. 2.729 ns) even
+  with DEPENDENCE distance=L, because fully partitioned accumulators are scalar registers (distance-1 loop-carried
+  for the tool). Fix attempted = ACC_STYLE=2: accumulators as LUTRAM partitioned only over (row,col) with
+  the rotating index so the pragma applies and the 7-cycle adder can be used. Result pending (v4 csynth).
+- Cosim: first attempt on the login node crashed xelab with LLVM out-of-memory (never build/simulate on `rce`,
+  use `./slurm.sh <target>`: 32 GB). chmod +x on slurm.sh/env.sh/scripts after uploading from Windows.
+  v3 cosim PASS via Slurm in ~10 min; measured cycle counts and the fitted overhead model are in CLAUDE.md.
+- Process lesson: the user wants stepwise validation (see CLAUDE.md working rules).
+
+## Oct 7: first measured hardware result (v3, submission id 58)
+- v3 on the U50 (kernel clock auto-scaled 300 -> 279.1 MHz after timing failed by 0.249 ns; worst path was the pipeline-enable CE fanout, 94% routing): all 9 cases PASS.
+- square 32.70 ms (27.7 GFLOP/s), N=1 sum 8.80 ms, N=32 sum 24.03 ms, TinyStories 57.2 tok/s.
+- N=1 (32000x288) 8.29 ms = 4.45 GB/s of A, about 24% of the 17.9 GB/s single port at 279 MHz; about 578 cycles per 8-row tile vs 144 ideal. Cosim-based fit (about 319 cycles/tile) under-predicted: real HBM latency is higher than the cosim memory model.
+- Model retraction: pre-run estimates (square 20-25 ms, N=1 6.5-7 ms, N=32 14-18 ms) were optimistic by about 1.3-1.7x. Use the measured numbers as the baseline.
+- Leaderboard context at the time: rank 1 square 1.166 ms (777 GFLOP/s), top 3 square 5.05-6.45 ms, N=1 3.2-3.65 ms, N=32 3.46-4.38 ms, tok/s 104-119.
+- Variants prepared (rce_upload/): v4, v4s0 (ACC_STYLE=0), v5a/v5b (dataflow, RT=4/8), *_p probes with extra cosim cases, v5b_frp/v12_frp/v6_frp (style=frp on the two hot compute loops). ACC_STYLE=2 is dead (LUTRAM read chained in front of fadd: 3.041 ns and 2x DSP).

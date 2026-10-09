@@ -1,39 +1,75 @@
-# Benchmark results — student_gemm (float32)
+# Benchmark results — student_gemm / student_gemm_int8
 
-Methodology: median of 51 timed runs per shape, compared against OpenBLAS
-0.3.28 (`cblas_sgemm`), on a 16-core machine, both using all cores.
-Correctness verified to ~1e-5 max absolute error against OpenBLAS's output
-on every shape. Single-shot timing was noisy on these problem sizes during
-development (same shape swung several GFLOP/s across back-to-back runs) --
-median-of-51 is the fix.
+Machine: i7-1260P laptop (AVX2 + AVX-VNNI, no AVX-512), MSYS2 gcc 14.2. Timings
+drift ~2x between identical runs (short problems, hybrid P/E cores, background
+load), so compare ratios inside one run, not absolute numbers across runs.
 
-| Shape | N | Ours (GFLOP/s) | OpenBLAS (GFLOP/s) | Ratio |
+## 1. Official harness (course scripts, unmodified: plain `gcc -O3 -lm`)
+
+No -march, no -mavx2, no -fopenmp, single core, one cold call timed. AVX2 is
+selected at runtime inside the source. Reference = the shipped naive
+`student_gemm_ref.c` / `student_gemm_int8_ref.c` through the same tester.
+
+Float, best of 7 runs, GFLOP/s (tolerance 1e-2; official cases 16/16 PASS;
+also 64/64 PASS over 16 values of N from 2 to 100, and 847 random
+(M,K,N) combinations incl. odd M/K/N checked against a naive double reference,
+~1M outputs, worst abs err 7e-5):
+
+| Shape | N=1 | N=8 | N=32 | N=64 | Reference N=1 / N=32 |
+|---|---|---|---|---|---|
+| attn-proj | 11.1 | 70.6 | 59.0 | 96.4 | 2.47 / 4.38 |
+| ffn-up | 20.7 | 63.8 | 98.1 | 110.8 | 3.18 / 3.69 |
+| ffn-down | 22.9 | 82.5 | 88.1 | 97.2 | 1.63 / 3.30 |
+| classifier | 10.6 | 49.9 | 81.8 | 96.3 | 4.17 / 3.78 |
+
+Throughput climbs with N, as the assignment says a good implementation does;
+the reference stays flat at ~2-4 GFLOP/s.
+
+Int8, best of 5 runs, GOP/s (per-element relative tolerance 1e-4; bit-exact,
+maxrel 0.0, at N=1,3,7,8,24,33,40,64,100):
+
+| Shape | N=1 | N=8 | N=32 | N=64 | Reference N=1 / N=32 |
+|---|---|---|---|---|---|
+| attn-proj | 9.8 | 21.3 | 38.9 | 43.0 | 1.82 / 2.44 |
+| ffn-up | 24.6 | 26.6 | 44.9 | 47.4 | 2.15 / 1.59 |
+| ffn-down | 22.0 | 31.1 | 47.4 | 48.1 | 2.40 / 2.52 |
+| classifier | 19.3 | 29.6 | 47.9 | 44.8 | 1.86 / 2.77 |
+
+## 2. Against OpenBLAS 0.3.28, single thread vs single thread
+
+`bench_openblas.c`, median of 51 calls per measurement, built like the official
+harness (plain `gcc -O3`, no OpenMP, no -march), `OMP_NUM_THREADS=1` (this
+OpenBLAS is an OpenMP build and ignores OPENBLAS_NUM_THREADS). OpenBLAS runs its
+Haswell AVX2 kernels, the same ISA as ours. N=1 vs `cblas_sgemv`, N>1 vs
+`cblas_sgemm`. Ratio = ours / OpenBLAS, median over 3 runs (min - max in
+brackets):
+
+| Shape | N=1 | N=8 | N=32 | N=64 |
 |---|---|---|---|---|
-| attn-proj (M=288, K=288) | 1 | 2.12 | 8.87 | 0.24x |
-| attn-proj | 32 | 22.91 | 45.53 | 0.50x |
-| ffn-up (M=768, K=288) | 1 | 4.30 | 7.00 | 0.61x |
-| ffn-up | 32 | 51.70 | 112.98 | 0.46x |
-| ffn-down (M=288, K=768) | 1 | 4.72 | 9.14 | 0.52x |
-| ffn-down | 32 | 44.13 | 84.46 | 0.52x |
-| classifier (M=32000, K=288) | 1 | 22.99 - 32.00 | 7.18 - 8.58 | 3.2x - 3.7x |
-| classifier | 32 | 161.67 - 249.01 | 130.50 - 215.51 | 1.16x - 1.24x |
+| attn-proj | 0.97 (0.76-1.00) | 1.81 (1.81-1.99) | 1.22 (1.18-1.39) | 1.11 (1.06-1.59) |
+| ffn-up | 1.27 (1.13-1.30) | 1.76 (1.50-1.85) | 1.20 (1.18-1.24) | 1.12 (1.07-1.22) |
+| ffn-down | 1.24 (1.18-1.42) | 1.76 (1.53-1.91) | 1.18 (1.02-1.27) | 1.10 (1.00-1.22) |
+| classifier | 1.11 (1.06-1.16) | 1.22 (1.07-1.40) | 1.13 (1.12-1.20) | 1.06 (1.03-1.19) |
 
-Classifier (the tall-skinny M=32000 shape) beats OpenBLAS, reproduced across
-two independent runs. Likely explanation: `gemv()` (the dedicated N=1 path)
-and OpenMP-over-32000-rows are hand-tuned for exactly this access pattern,
-where OpenBLAS's general-purpose dispatch doesn't specialize as aggressively.
-Not yet root-caused further than that -- worth digging into if there's time.
+What this does and does not show:
+- It is a shape-specialised kernel against a general-purpose library call, on
+  four fixed shapes and N <= 64. The gains come from things a generic library
+  does not assume: no packing of A when N is small (A is a weight matrix read
+  once), no K-blocking (K is only 288/768 so a row slab fits in L1), a 12x8
+  tile when N <= 8 (a 16-wide strip would waste half its lanes), and 8 rows per
+  pass in the N=1 gemv so one B load feeds 8 FMAs.
+- Single thread only. Not measured: N > 64 (that goes through the general
+  packed 6x16 path, which was ~0.8-0.9x of OpenBLAS in an earlier round),
+  other shapes, other machines (the grader's CPU may differ; runtime dispatch
+  falls back to scalar code if AVX2/FMA are missing).
+- 14 of 16 cells are >= 1.0x by median, attn-proj N=1 is a tie. The noise
+  floor on this laptop is large, so treat 1.0-1.1x as "about equal".
 
-On the other three shapes, 24-62% of OpenBLAS's throughput -- expected and
-reasonable for a from-scratch kernel against a professionally auto-tuned
-library (see notes.md's discussion of why matching/beating vendor BLAS
-generally isn't realistic).
+Retractions, so they are not repeated: (a) an early version claimed 2.5-3.7x
+wins at N=1 -- that compared against `sgemm` on a vector, an unfair baseline.
+(b) An early "1.18x on classifier N=32" was a 16-thread run where our
+OpenMP-over-rows scaled better than OpenBLAS; it was not a kernel-quality win.
 
-int8 kernel: no OpenBLAS comparison yet (would need a reference int8 GEMM,
-not just cblas_sgemm). Measured 10-50x speedup over the correctness-first
-version on N=32 shapes after fixing the stride-1 access issue -- see
-notes.md for detail.
-
-Reproduce: `gcc -O3 -march=native -fopenmp student_gemm.c bench_rigorous.c
--lopenblas -lm` (bench_rigorous.c currently lives in the session's temp
-scratchpad, not this repo -- recreate from this file's methodology if needed).
+Reproduce: `gcc -O3 bench_openblas.c student_gemm.c -lopenblas -lm`, run with
+`OMP_NUM_THREADS=1` (needs OpenBLAS; `pacman -S
+mingw-w64-ucrt-x86_64-openblas` on MSYS2).

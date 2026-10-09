@@ -1,0 +1,101 @@
+{
+ "ref": "Once upon a time, there was a little girl named Lily. She loved to play outside in the sunshine. One day, she saw a big, red ball in the sky. It was the sun! She thought it was so pretty.\nLily wanted to play with the ball, but it was too high up in the sky. She tried to jump and reach it, but she couldn't. Then, she had an idea. She would use a stick to knock the ball down.\nLily found a stick and tried to hit the ball. But the stick was too short. She tried again and again, but she couldn't reach it. She felt sad.\nSuddenly, a kind man came by and saw Lily. He asked her what was wrong. Lily told him about the ball. The man smiled and said, \"I have a useful idea!\" He took out a long stick and used it to knock the ball down. Lily was so happy! She thanked the man and they played together in the sunshine.",
+ "rows": [
+  {
+   "bits": 8,
+   "gs": 32,
+   "classifier_MB": 10.37,
+   "weights_MB": 17.09,
+   "same_prefix_pct": 38.0,
+   "story": "Once upon a time, there was a little girl named Lily. She loved to play outside in the sunshine. One day, she saw a big, red ball in the sky. It was the sun! She thought it was so pretty.\nLily wanted to play with the ball, but it was too high up in the sky. She tried to jump, but she couldn't reach it. Then, she saw a big, strong man walking by. She asked him if he could help her get the ball.\nThe man was very generous and gave her a big, red balloon. Lily was so happy! She thanked the man and ran back to her house to show her mommy the balloon. Her mommy was so proud of her for being so kind and generous. From that day on, Lily always looked up at the sky, hoping to see the sunshine again."
+  },
+  {
+   "bits": 8,
+   "gs": 16,
+   "classifier_MB": 11.52,
+   "weights_MB": 18.98,
+   "same_prefix_pct": 48.2,
+   "story": "Once upon a time, there was a little girl named Lily. She loved to play outside in the sunshine. One day, she saw a big, red ball in the sky. It was the sun! She thought it was so pretty.\nLily wanted to play with the ball, but it was too high up in the sky. She tried to jump, but she couldn't reach it. Then, she saw a ladder nearby. She climbed up the ladder and reached for the ball. She was so happy!\nBut then, Lily realized she was stuck. She couldn't get down. She started to cry. A kind man saw her and came to help. He climbed up the ladder and got the ball for her. Lily was so happy and thanked the man. She learned that sometimes it's okay to ask for help when you need it."
+  },
+  {
+   "bits": 8,
+   "gs": 8,
+   "classifier_MB": 13.82,
+   "weights_MB": 22.78,
+   "same_prefix_pct": 43.9,
+   "story": "Once upon a time, there was a little girl named Lily. She loved to play outside in the sunshine. One day, she saw a big, red ball in the sky. It was the sun! She thought it was so pretty.\nLily's mommy came outside and said, \"Lily, it's time to come inside. The sun is going down and it's getting dark.\" Lily didn't want to go inside yet. She wanted to play more.\nBut then, Lily's mommy said, \"Lily, it's time to come inside now. You can play again tomorrow.\" Lily was sad, but she knew her mommy was right. She said goodbye to the sun and went inside.\nThe next day, Lily woke up and saw the sun shining bright. She was so happy! She ran outside to play with her new ball. But then, she saw a big, scary dog. Lily was scared and didn't know what to do. She remembered what her mommy said about the sun shining. So, she ran inside and told her mommy about the dog. Her mommy hugged her and said"
+  },
+  {
+   "bits": 6,
+   "gs": 32,
+   "classifier_MB": 8.06,
+   "weights_MB": 13.29,
+   "same_prefix_pct": 13.5,
+   "story": "Once upon a time, there was a little girl named Lily. She loved to play outside in the sunshine. One day, she saw a big, dark cloud in the sky. She knew that meant it was going to rain soon.\nLily ran inside her house and told her mommy, \"Mommy, it's going to rain soon. I don't want to get wet.\" Her mommy said, \"Don't worry, Lily. We can stay inside and play games until the rain stops.\"\nLily was happy to hear that. She loved playing games with her mommy. They played games like hide and seek and tag. After a while, the rain started to pour down. Lily's mommy said, \"We have to go inside now, Lily. It's getting dark and we don't want to be outside.\"\nLily was sad to leave her friends, but she knew her mommy was right. She said goodbye to her mommy and went inside. She was happy to be inside where it was warm and dry."
+  },
+  {
+   "bits": 5,
+   "gs": 32,
+   "classifier_MB": 6.91,
+   "weights_MB": 11.39,
+   "same_prefix_pct": 9.6,
+   "story": "Once upon a time, there was a little girl named Lily. She loved to play outside in the sunshine. One day, she went to the park with her mommy. They played on the swings and went down the slide. \nSuddenly, Lily saw a big, scary dog. She was scared and didn't want to go near it. Her mommy told her not to worry and that the dog was friendly. Lily felt better and they continued to play. \nAfter a while, Lily's mommy said it was time to go home. Lily didn't want to leave the park, but her mommy said they had to go. Lily felt sad because she didn't want to leave the park. But then, her mommy said they could come back another day. Lily felt happy again and they went home."
+  },
+  {
+   "bits": 4,
+   "gs": 32,
+   "classifier_MB": 5.76,
+   "weights_MB": 9.49,
+   "same_prefix_pct": 4.9,
+   "story": "Once upon a time, there was a little girl named Lily. She loved to play outside and explore the world around her. One day, she found a big rock in her backyard. It was a very big rock and Lily was very excited to play with it.\nBut as she was playing with the rock, she accidentally dropped it and it fell to the ground. Lily was very sad because she thought she had broken the rock. But then, something unexpected happened! The rock started to glow and a fairy appeared!\nThe fairy told Lily that the rock was magical and could grant her three wishes. Lily was so happy and wished for a big ice cream cone, and the fairy granted her wish. From that day on, Lily always remembered the magical fairy who granted her wishes and her magical fairy friend."
+  },
+  {
+   "bits": 4,
+   "gs": 16,
+   "classifier_MB": 6.91,
+   "weights_MB": 11.39,
+   "same_prefix_pct": 4.7,
+   "story": "Once upon a time, there was a little girl named Lily. She loved to play outside in the park with her friends. One day, Lily and her friends were playing on the swings. They were having so much fun that they didn't notice the time.\nSuddenly, Lily's mom called out to her, \"Lily, it's time to come inside for dinner!\" Lily didn't want to leave her friends, but she knew she had to listen to her mom.\nAs she was walking home, Lily saw a big dog. The dog looked friendly, but Lily was scared. She didn't know what to do. She tried to run away, but the dog chased her.\nLily's mom saw what was happening and ran over to the dog. She picked up Lily and held her tightly. \"Don't worry, I'll take you home,\" she said. Lily was so happy to be safe and sound with her mom.\nBut as they walked away, Lily's mom realized that she had lost her phone. She was very sad and didn't know what to do. Lily was sad too, because she didn"
+  },
+  {
+   "bits": 4,
+   "gs": 8,
+   "classifier_MB": 9.22,
+   "weights_MB": 15.19,
+   "same_prefix_pct": 7.7,
+   "story": "Once upon a time, there was a little girl named Lily. She loved to play outside in the sunshine. One day, she saw a big, bright sunflower in her garden. It was so pretty and yellow! \nLily's mom came outside and said, \"Lily, be careful not to get too close to the sunflower. It might be scary.\" \nLily didn't listen and ran over to the sunflower. She touched it and felt its soft petals. Suddenly, she heard a loud noise. It was a bird! The bird was flying towards her and she got scared. \nLily ran back to her mom and said, \"Mommy, I saw a bird! It was so loud!\" Her mom smiled and said, \"Yes, it was very loud. But don't worry, it's a nice bird. Let's go inside and have some cookies.\" And they went inside to enjoy a yummy treat together."
+  },
+  {
+   "bits": 3,
+   "gs": 32,
+   "classifier_MB": 4.61,
+   "weights_MB": 7.59,
+   "same_prefix_pct": 3.3,
+   "story": "Once upon a time, there was a little boy named Timmy. Timmy loved to play outside, but he never listened to his mommy and daddy when he had to go to school. His mommy always had a good dress that made everything look nice and smell nice too. Timmy's mommy told him that his mommy had a lot of wisdom in their hearts. Timmy liked his mommy very much and felt very happy when he knew her.\nOne day, Timmy and his mommy went to the park. They saw a big, colorful, happy dog. Timmy wanted to pet the dog, but he knew he had to beh his dads first. He climbed up on the playground slide and went down the slide again, but he had a fall. His friends laughed at the kid, but Timmy knew he had to be honest and not lie to his friends about his fall. He told them he would be the best he could ever be the kid's daddy. Timmy's friends were surprised and happy. They played together and had a great time. Timmy realized that he wanted to be an honest kid like his own owners and not lie about being a kid anymore."
+  },
+  {
+   "bits": 3,
+   "gs": 8,
+   "classifier_MB": 8.06,
+   "weights_MB": 13.29,
+   "same_prefix_pct": 5.0,
+   "story": "Once upon a time, there was a little girl named Lily. She loved to play outside and explore the world. One day, she went into her neighbor's yard and saw a big, red apple hanging from a tree. She wanted to eat it, but it was too high for her to reach.\nLily thought of an idea. She went inside and got a ladder. She climbed up and reached for the apple, but it was too heavy. Suddenly, a strong wind blew and the apple fell on the ground. Lily picked it up and took a bite. It was delicious! She was so happy that she had saved it from being eaten.\nFrom that day on, Lily knew that even though she couldn't eat apples, she could still have fun and learn something new. And she always remembered to ask for help when she needed it."
+  },
+  {
+   "bits": 2,
+   "gs": 32,
+   "classifier_MB": 3.46,
+   "weights_MB": 5.7,
+   "same_prefix_pct": 2.5,
+   "story": "Once upon a time firsthingheshesheshesheserunchunchunchunchunchunchunchunchunchunchunchunchunchunchunchatingating and and and and and and and and and to It stay stay stay reallyococries whole?\u201d it out stay stay stay stay stay stay stay stay stay stay stay stay stay stay stay stay on for okay a sailersousousousous sale firstoc golf us stay stay stay stay stay on for moousle by or stay sizesyous marriage in couldug maugousdingounced cicksousous canCanocococococococococriesdingYes onYes onYes toig foreverNoy sk emeryousding usgy sink ro real mo cally stay stay stay in sizes sizesYes inersousctorsug escape usakingy hony sizesl stays stays stays staysYesousyyying whataking hotel sizes can stays sk call sw sw sw sw sw sw sw sw sw swyy stay in sizes sizesYes iners areaking allatden untilag sizesl ship sizes stay valueousctorsug sizes stay stay stay in sizesesYes on fighting bothower stayingousl sizesw sizesYes in mfree traugyyyingpe andous?\u201dyy stay"
+  },
+  {
+   "bits": 2,
+   "gs": 8,
+   "classifier_MB": 6.91,
+   "weights_MB": 11.39,
+   "same_prefix_pct": 2.6,
+   "story": "Once upon a time away always always for, read read read read read read read read read read read read read read read read read read reading reading reading reading read read read read read read read read read read old old old saidzingive old to read readingiveiveiveive old to read read readiveiveiveiveiveiveive big read books about how big big big lif lif lif long readive readiveiveive read books about how Mr jative one one big about all the about s one one one one say old big big big big and big that no one no one no one no one no prince that that big that big crash to the old for one no one no one no one to the old for say the big, small small small small small small for for one no one not not to sount for for for for for for for for for for for for for for for for for for for for for for for for for for for for for for for for for for caring most kid girl girl girl girl' the girl' the girl' the girl' the girl' make of small small each long am, who each long saw to' the girl' the girl' the girl' the girl' the girl' the a a a a a a kind"
+  }
+ ]
+}
