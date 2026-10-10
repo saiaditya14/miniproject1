@@ -14,9 +14,9 @@ ax.set_ylabel("aggregate tokens/s (CPU, laptop)")
 ax.set_title("tok/s versus N: about 2.5x up to N=16, dip at N=32 (cause unverified)", fontsize=9)
 ax.legend()
 fig.tight_layout()
-fig.savefig("figures/toks_vs_N.png", dpi=150)
+fig.savefig("results/figures/toks_vs_N.png", dpi=150)
 
-d = json.load(open("part3/results/sweep.json"))
+d = json.load(open("part3_int8/results/sweep.json"))
 rows = [r for r in d["rows"] if r["gs"] == 32]
 bits = [r["bits"] for r in rows]
 mem = [r["weights_MB"] for r in rows]
@@ -31,7 +31,7 @@ ax.set_ylim(0, 66)
 ax.set_xlabel("weight bits (group size 32)")
 ax.set_ylabel("weights, MB")
 ax.set_title("memory versus precision (green: story coherent, red: broken)", fontsize=9)
-fig.text(0.5, 0.005, "coherence judged by reading the generated stories (part3/results/sweep.json)", ha="center", fontsize=7)
+fig.text(0.5, 0.005, "coherence judged by reading the generated stories (part3_int8/results/sweep.json)", ha="center", fontsize=7)
 fig.tight_layout(rect=(0, 0.03, 1, 1))
-fig.savefig("figures/precision_tradeoff.png", dpi=150)
+fig.savefig("results/figures/precision_tradeoff.png", dpi=150)
 print("ok")

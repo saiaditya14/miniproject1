@@ -1,6 +1,6 @@
 # Mini-Project 1 (roll 2023101096): GEMM on CPU and on the U50, and the language model that runs on it
 
-Start with `WRITEUP.md`. It is the report; section 1a maps every checkpoint of the three course pages to its answer and says what was measured, what is modelled, and what cannot be measured and why. Section 12 maps every claim to its evidence.
+Start with `docs/WRITEUP.md`. It is the report; section 1a maps every checkpoint of the three course pages to its answer and says what was measured, what is modelled, and what cannot be measured and why. Section 12 maps every claim to its evidence.
 
 ## Results in one table (card numbers from the grader portal)
 
@@ -16,14 +16,14 @@ Start with `WRITEUP.md`. It is the report; section 1a maps every checkpoint of t
 
 | what | where |
 |---|---|
-| Part 1 float32 and int8 GEMM (CPU) | `student_gemm.c`, `student_gemm_int8.c`; results and method: `BENCHMARKS.md`, WRITEUP 1b; earlier hand-written versions: `loop.c`; OpenBLAS comparison: `bench_openblas.c` |
-| Part 2 profile, batching, offload ranking (CPU) | `part2/`, `notes.md`, WRITEUP 5 |
-| Part 2 on the accelerator (U50) | source of the selected bitstream: `fpga_submitted_k2d/` (`src/kernel.cpp`, knobs in `src/kernel_cfg.h`: RT=6, CP=2, KUN=2); the 256-MAC baseline it was developed from: `fpga_baseline_f4/`; results, story and tok/s: WRITEUP 1; per-token budget and ceiling: WRITEUP 4 |
-| Part 3 int8 seam and precision sweep | `part3/`, WRITEUP 9, figures in `figures/` |
-| every other FPGA variant (flags, job ids, outcomes, retractions) | `rce_upload_variants.zip` (one folder per variant), `logs/variants.md` |
-| fix in progress at the deadline (streaming A reader for the tiled path) | `fpga_inprogress_sk4/`; its RTL cosim passed and its hardware build was still running when this was packed, so it has no measured result (WRITEUP 1, "Known limitations") |
-| build logs, timing reports, portal rows | `evidence/`, `logs/` |
-| engineering narrative behind the results (clock closure, debugging log, the K-unrolled builds, next steps), kept out of the report | `ENGINEERING_LOG.md` (sections 6, 7, 8, 10, 11 in full; the report carries a short summary of each) |
-| how to rebuild and resubmit | `REPRODUCE.md` |
+| Part 1 float32 and int8 GEMM (CPU) | `part1_cpu/student_gemm.c`, `part1_cpu/student_gemm_int8.c`; results and method: `docs/BENCHMARKS.md`, WRITEUP 1b; earlier hand-written versions: `part1_cpu/loop.c`; OpenBLAS comparison: `part1_cpu/bench_openblas.c` |
+| Part 2 profile, batching, offload ranking (CPU) | `part2_batching/`, `docs/notes.md`, WRITEUP 5 |
+| Part 2 on the accelerator (U50) | source of the selected bitstream: `fpga/k2d/` (`src/kernel.cpp`, knobs in `src/kernel_cfg.h`: RT=6, CP=2, KUN=2); the 256-MAC baseline it was developed from: `fpga/f4/`; results, story and tok/s: WRITEUP 1; per-token budget and ceiling: WRITEUP 4 |
+| Part 3 int8 seam and precision sweep | `part3_int8/`, WRITEUP 9, figures in `results/figures/` |
+| every other FPGA variant (flags, job ids, outcomes, retractions) | `fpga/variants.zip` (one folder per variant), `results/logs/variants.md` |
+| fix in progress at the deadline (streaming A reader for the tiled path) | `fpga/sk4/`; its RTL cosim passed and its hardware build was still running when this was packed, so it has no measured result (WRITEUP 1, "Known limitations") |
+| build logs, timing reports, portal rows | `results/evidence/`, `results/logs/` |
+| engineering narrative behind the results (clock closure, debugging log, the K-unrolled builds, next steps), kept out of the report | `docs/ENGINEERING_LOG.md` (sections 6, 7, 8, 10, 11 in full; the report carries a short summary of each) |
+| how to rebuild and resubmit | `docs/REPRODUCE.md` |
 
 No portal token is stored anywhere in this archive.

@@ -15,7 +15,7 @@ RT=10 / RT=12 arrays (f3c, f2c): both failed to route, so no clock is available 
 
 ## 7. Debugging: the loops, the method, and the wrong turns
 
-Every problem below was worked the same way. (1) Turn the symptom into a number: cycles per tile, nanoseconds per row, GB/s, DSPs per module. (2) Build the cheapest experiment that separates two explanations. (3) Read the artifact itself (the routed timing report's worst paths, the generated Verilog, the csynth log, the per-case table from the card) and not a summary of it. (4) Write down what was wrong, including my own earlier conclusions (`logs/variants.md` keeps the retractions in order).
+Every problem below was worked the same way. (1) Turn the symptom into a number: cycles per tile, nanoseconds per row, GB/s, DSPs per module. (2) Build the cheapest experiment that separates two explanations. (3) Read the artifact itself (the routed timing report's worst paths, the generated Verilog, the csynth log, the per-case table from the card) and not a summary of it. (4) Write down what was wrong, including my own earlier conclusions (`results/logs/variants.md` keeps the retractions in order).
 
 | symptom | first explanation | what the evidence showed | fix and result |
 |---|---|---|---|
@@ -35,7 +35,7 @@ Things that held across all of these:
 
 ## 8. Reproduce
 
-Source for every variant is in `rce_upload/` (one folder per variant, named in `logs/variants.md` with job ids and flags). Build and submit commands are in `REPRODUCE.md`. Local correctness gate without Vitis: `g++ -O2 -std=c++17 -Wno-unknown-pragmas -o tb fpga/src/kernel_tb.cpp fpga/src/kernel.cpp && ./tb full`.
+Source for every variant is in `rce_upload/` (one folder per variant, named in `results/logs/variants.md` with job ids and flags). Build and submit commands are in `REPRODUCE.md`. Local correctness gate without Vitis: `g++ -O2 -std=c++17 -Wno-unknown-pragmas -o tb fpga/src/kernel_tb.cpp fpga/src/kernel.cpp && ./tb full`.
 
 ## 10. Next architecture: K-unrolled accumulation, and why the bigger arrays failed (in flight)
 

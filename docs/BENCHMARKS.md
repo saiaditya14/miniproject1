@@ -37,7 +37,7 @@ maxrel 0.0, at N=1,3,7,8,24,33,40,64,100):
 
 ## 2. Against OpenBLAS 0.3.28, single thread vs single thread
 
-`bench_openblas.c`, median of 51 calls per measurement, built like the official
+`part1_cpu/bench_openblas.c`, median of 51 calls per measurement, built like the official
 harness (plain `gcc -O3`, no OpenMP, no -march), `OMP_NUM_THREADS=1` (this
 OpenBLAS is an OpenMP build and ignores OPENBLAS_NUM_THREADS). OpenBLAS runs its
 Haswell AVX2 kernels, the same ISA as ours. N=1 vs `cblas_sgemv`, N>1 vs
@@ -70,6 +70,6 @@ wins at N=1 -- that compared against `sgemm` on a vector, an unfair baseline.
 (b) An early "1.18x on classifier N=32" was a 16-thread run where our
 OpenMP-over-rows scaled better than OpenBLAS; it was not a kernel-quality win.
 
-Reproduce: `gcc -O3 bench_openblas.c student_gemm.c -lopenblas -lm`, run with
+Reproduce: `gcc -O3 part1_cpu/bench_openblas.c part1_cpu/student_gemm.c -lopenblas -lm`, run with
 `OMP_NUM_THREADS=1` (needs OpenBLAS; `pacman -S
 mingw-w64-ucrt-x86_64-openblas` on MSYS2).

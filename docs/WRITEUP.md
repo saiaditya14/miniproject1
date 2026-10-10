@@ -2,7 +2,7 @@
 
 Single bitstream, `extern "C" void gemm(A, B, C, M, K, N)`, float32, U50 (XCU50, HBM2). Everything below is a
 measured number from the grader's card unless it says "estimate". Run ids refer to the submission portal; the
-raw per-case logs are in `logs/`, the variant table is `logs/variants.md`, and section 12 maps every claim to its evidence.
+raw per-case logs are in `results/logs/`, the variant table is `results/logs/variants.md`, and section 12 maps every claim to its evidence.
 
 Summary: a single fp32 GEMM bitstream for the U50 passes all nine grader cases and runs the TinyStories model at about 106 tok/s (median of eight runs of the selected design, 384 MACs at 262.3 MHz; best run 107.78; the earlier 256-MAC design reached 111.31 in its best run). Run 191 is on the leaderboard: square 6.436 ms, N=1 3.227 ms, N=32 5.281 ms, 107.78 tok/s. On the leaderboard at 22:26 on 9 October that is 4th on N=1, 5th on tok/s and 8th on N=32 and on square (the board changes as runs are starred). The N=1 path reads A at 12.5 GB/s from one HBM pseudo-channel, which probe kernels that only read show is the port's ceiling. Most of the work was diagnosis: an N=1 time stuck at 6.7 ms was traced, by reading generated RTL, to single-beat writes caused by a shared 512-bit write bundle, and fixing it halved it. On the compute side a 256-MAC array (f4) was followed by a 384-MAC K-unrolled build (k2d), which took 10% off square; a 512-MAC build (k4a) routed but clocked at 234.6 MHz and was slower (ENGINEERING_LOG.md, section 10). Parts 1 and 3 (CPU GEMM and the int8 precision sweep) are complete.
 
@@ -24,11 +24,11 @@ Sections 6, 7, 8, 10 and 11 are summarised below and kept in full in `ENGINEERIN
 | k4a, 512 MACs, three submissions (ids 166-168), median; not selected | 234.6 MHz | 7.78 ms | 3.34 ms | 6.27 ms | 100.8 |
 
 The nine f4 runs are the same bitstream: square 7.114-7.167, N=1 3.225-3.297, N=32 5.392-5.464, tok/s 103.7-111.3.
-f4: the spread is 0.7% on square, 2.2% on N=1, 1.3% on N=32 and 7% on tok/s, so 111.31 against a median of 105.4 is run-to-run variation on identical hardware; it is the same design. Runs 146-149 were submitted first and five more (176-179, 181) on the evening of 9 October; run 178 was the leaderboard run until k2d replaced it. k2d: eight runs (184-191) span square 6.384-6.465 ms (1.3%), N=1 3.227-3.253 (0.8%), N=32 5.265-5.307 (0.8%) and tok/s 104.42-107.78 (3.2%); run 191 has the best N=1 and the best tok/s of the eight, is within 0.8% of the best square and within 0.3% of the best N=32, and was starred for that reason. The rows of runs 176-191 are in `evidence/portal_runs_176_181.png` and `evidence/portal_runs_184_191.png`. The last row of the table is a summary of extremes over all our runs, not an entry: the leaderboard takes one run per row.
+f4: the spread is 0.7% on square, 2.2% on N=1, 1.3% on N=32 and 7% on tok/s, so 111.31 against a median of 105.4 is run-to-run variation on identical hardware; it is the same design. Runs 146-149 were submitted first and five more (176-179, 181) on the evening of 9 October; run 178 was the leaderboard run until k2d replaced it. k2d: eight runs (184-191) span square 6.384-6.465 ms (1.3%), N=1 3.227-3.253 (0.8%), N=32 5.265-5.307 (0.8%) and tok/s 104.42-107.78 (3.2%); run 191 has the best N=1 and the best tok/s of the eight, is within 0.8% of the best square and within 0.3% of the best N=32, and was starred for that reason. The rows of runs 176-191 are in `results/evidence/portal_runs_176_181.png` and `results/evidence/portal_runs_184_191.png`. The last row of the table is a summary of extremes over all our runs, not an entry: the leaderboard takes one run per row.
 
 Leaderboard position at 22:26 on 9 October (26 rows, run 191 live): N=1 4th (3.227 ms), tok/s 5th (107.78), N=32 8th (5.281 ms), square 8th (6.436 ms). With f4's run 178 in the row, the 21:05 board gave 4th, 4th, 10th and 11th, so k2d trades one place on tok/s for three on square and two on N=32.
 
-The story from the accelerator run (Part 2 deliverable), run 191, 107.78 tok/s, as returned by the portal (the model writes one story, then starts another within the 256 tokens; stories differ from run to run, as the earlier runs' stories in `logs/runidk.md` do):
+The story from the accelerator run (Part 2 deliverable), run 191, 107.78 tok/s, as returned by the portal (the model writes one story, then starts another within the 256 tokens; stories differ from run to run, as the earlier runs' stories in `results/logs/runidk.md` do):
 
 > Once upon a time, there was a boy named Timmy. Timmy was a very adventurous boy who loved to explore new places. One day, Timmy received a big box in his mail. He was very excited to open it and see what was inside.
 > But when he opened the box, he saw that it was empty. Timmy was very sad and started to cry. His mom came to him and asked what was wrong. Timmy told her that he wanted to go on an adventure but didn't know how.
@@ -66,7 +66,7 @@ Checkpoints are those on the three course pages (Part 1 section 1.5, Part 2 sect
 
 ## 1b. Part 1: the CPU GEMM (float32 and int8)
 
-`student_gemm.c` and `student_gemm_int8.c`: single core, AVX2 selected at run time, built by the official harness with plain `gcc -O3 -lm` (no `-march`, no OpenMP). Laptop (i7-1260P); timings drift about 2x between identical short runs, so ratios inside one run are the reliable quantity. Full tables and method: `BENCHMARKS.md`.
+`part1_cpu/student_gemm.c` and `part1_cpu/student_gemm_int8.c`: single core, AVX2 selected at run time, built by the official harness with plain `gcc -O3 -lm` (no `-march`, no OpenMP). Laptop (i7-1260P); timings drift about 2x between identical short runs, so ratios inside one run are the reliable quantity. Full tables and method: `BENCHMARKS.md`.
 
 float32, GFLOP/s, best of 7 (the reference column is the course's naive kernel, which stays flat in N):
 
@@ -103,7 +103,7 @@ Four decisions, in order of effect.
 
 0.5 flop per byte of A, so the kernel is bound by how fast A streams. The classifier (A = 36.9 MB, from DRAM) reaches 10.6 GFLOP/s, which is 21 GB/s of A; I did not measure this laptop's single-core DRAM bandwidth, so I do not claim that is its ceiling. The 288 x 288 call is about 15 us in total, so fixed costs (call, dispatch, cold caches) are a visible share of it, and I did not separate them. The two mid-size shapes (A of 0.9 MB) are the fastest at N = 1, 21-23 GFLOP/s.
 
-### int8 (`student_gemm_int8.c`)
+### int8 (`part1_cpu/student_gemm_int8.c`)
 
 The reference rounds as `acc += (As * Bs) * (float)dot`, with groups added in ascending order, and the tester compares per element at 1e-4 relative. To be bit-exact the kernel keeps exactly that order and is compiled with `target("avx2")` only, so the compiler cannot contract it into FMAs. Inside a group the dot product is exact integer arithmetic: bytes widened to int16 and `madd_epi16` into int32 (gemv: 16 k-values per step; gemm: two adjacent k-rows of B are interleaved with `unpack`, then multiplied by a broadcast pair of A values, 16 columns per pass). The float scale is applied once per group. The result: 9.8-48.1 GOP/s, 5-11x the reference at N = 1 and 16-28x at N = 32, but at N >= 8 below the float kernel's GFLOP/s (21-48 against 50-111), because the per-group float conversion and the widening cost more compute than the byte savings buy back; at N = 1 the two are comparable (int8 is ahead on ffn-up and the classifier, 24.6 against 20.7 and 19.3 against 10.6). The int8 gain is in bytes (4x less weight traffic), which shows up at N = 1 in the model (section 9: 2.7x tok/s on the CPU) and not as peak throughput. I did not use AVX-VNNI even though this laptop has it, so the kernel stays within what the grader's CPU is likely to have.
 
@@ -160,7 +160,7 @@ The per-call cost is a floor, and it explains why tok/s does not follow the N=1 
 - Matmul fraction f: 91.8-95.7% of runtime (mean ~94%); the Amdahl cap for accelerating only the GEMMs is about 17x (12-23x).
 - Which shape dominates: the 288->32000 classifier, 64.9% of matmul time, not the FFN (w1/w3 15.3%, attention 10.3%, w2 9.5%). On the card (f4) the classifier is 2.98 of 6.10 ms of matmul per token (49%).
 - tok/s versus N (CPU, aggregate tokens/s, median of 5): N=1 296, N=2 263, N=4 447, N=8 729, N=16 782, N=32 510, N=64 681. It rises about 2.5x and flattens near 700-800 where non-GEMM work (attention per stream, sampling, gather) dominates. The N=32 dip is an unverified hypothesis (per-stream KV caches falling out of cache).
-![tok/s versus N on the CPU](figures/toks_vs_N.png)
+![tok/s versus N on the CPU](../results/figures/toks_vs_N.png)
 
 - On the card: the grader's host runs the story at N = 1 only, so a hardware tok/s-versus-N run cannot be made with a bitstream alone (it needs a host that carries N > 1 streams, which is the open host-bundle question in `ENGINEERING_LOG.md` section 11). What we measured on the card is the kernel at both ends: the N = 1 total is 3.2 ms and the N = 32 total is 5.4 ms, so 32 times the work costs 1.7 times the time and the cost per vector falls about 19x. That is the batching payoff.
 - tok/s versus N on the card, modelled from those measured rows (f4 design; k2d has the same N=1 path and a slightly faster N=32 total). A decoding step with N streams costs the per-stream host work (3.28 ms per token, from run 149: 9.38 ms per token minus 6.10 ms of N = 1 matmul) plus one pass of the 43 matmuls. The matmul pass is measured at N = 1 (6.10 ms) and at N = 32 (24 x 0.074 + 12 x 0.146 + 6 x 0.139 + 5.033 = 9.39 ms, run 149). For 2 <= N <= 32 the tiled kernel pads to a 32-column tile, so I take the pass as 9.39 ms; above 32 it reads the weights again per 32-column tile, so 9.39 ms per 32 columns. Then aggregate tok/s = 1000 / (3.28 + pass / N):
@@ -183,16 +183,16 @@ Every problem was worked the same way: turn the symptom into a number, build the
 
 ## 8. Reproduce (full text: `REPRODUCE.md`)
 
-Source for every variant is in `rce_upload_variants.zip` (flags and job ids in `logs/variants.md`); the selected design is `fpga_submitted_k2d/` and the 256-MAC baseline is `fpga_baseline_f4/`. Build, submit and local-gate commands are in `REPRODUCE.md`.
+Source for every variant is in `fpga/variants.zip` (flags and job ids in `results/logs/variants.md`); the selected design is `fpga/k2d/` and the 256-MAC baseline is `fpga/f4/`. Build, submit and local-gate commands are in `REPRODUCE.md`.
 
 ## 9. Part 3: int8, and where the story breaks
 
-`part3/int8_backend.c` routes `runq`'s matmul through our `student_gemm_int8` (A = the weight tensor with M = d, K = n; B = the quantized activation vector, N = 1; scale layouts match the contract). Greedy output is byte-identical to the golden `runq` on two prompts, and sampled output (t = 0.8, top-p 0.9, 200 tokens) is identical on 10 of 10 seeds.
+`part3_int8/int8_backend.c` routes `runq`'s matmul through our `student_gemm_int8` (A = the weight tensor with M = d, K = n; B = the quantized activation vector, N = 1; scale layouts match the contract). Greedy output is byte-identical to the golden `runq` on two prompts, and sampled output (t = 0.8, top-p 0.9, 200 tokens) is identical on 10 of 10 seeds.
 Speed on the laptop (greedy, 256 tokens, 5 runs): stock fp32 `run` 115-119 tok/s, golden `runq` 256-324, ours 299-323. Medians 117 / 307 / 323, so int8 is about 2.7x faster than fp32 on the CPU and our kernel keeps up with the golden.
 
 **Group size 64 does not exist for this model.** The model dimension is 288, not a multiple of 64, so the exporter falls back to 32 (its "GS=64" file is the same size as the GS=32 file). The sweep therefore uses group sizes 32, 16 and 8.
 
-**The sweep.** `runq` only does int8, so lower widths are requantized to b bits (range +-(2^(b-1)-1), per-group scale) and stored in the same container. Story quality is exactly that of b-bit weights; memory is computed from the format (b/8 + 4/GS bytes per weight); tok/s is measured only for int8 (sub-8-bit would need a packed kernel, not built). Quantized tensors total 15.19M weights; the classifier (shared with the token table) is 9.22M. fp32 baseline: 60.8 MB of weights, 36.9 MB for the classifier. Greedy decoding, `part3/sweep.py`, raw results in `part3/results/sweep.json`.
+**The sweep.** `runq` only does int8, so lower widths are requantized to b bits (range +-(2^(b-1)-1), per-group scale) and stored in the same container. Story quality is exactly that of b-bit weights; memory is computed from the format (b/8 + 4/GS bytes per weight); tok/s is measured only for int8 (sub-8-bit would need a packed kernel, not built). Quantized tensors total 15.19M weights; the classifier (shared with the token table) is 9.22M. fp32 baseline: 60.8 MB of weights, 36.9 MB for the classifier. Greedy decoding, `part3_int8/sweep.py`, raw results in `part3_int8/results/sweep.json`.
 
 | precision | classifier | all weights | story (prompt "Once upon a time", greedy) |
 |---|---|---|---|
@@ -223,9 +223,9 @@ The edge is between 3 and 2 bits, at both group sizes. The exact-match measure (
 
 The memory axis is exact and the story axis is read from the generated text, so only this tok/s column is modelled. The int8 kernel raises the roof as the course page asks: 3.6x fewer weight bytes gave 2.6x the tok/s for the golden (117 to 307; 2.8x for our kernel, 323), short of 3.6x because the 1.19 ms of non-weight work does not shrink.
 
-![memory versus precision](figures/precision_tradeoff.png)
+![memory versus precision](../results/figures/precision_tradeoff.png)
 
-The int8, 4-bit and 2-bit stories next to the fp32 story (first 330 characters, same prompt, greedy; `figures/stories_excerpt.txt`):
+The int8, 4-bit and 2-bit stories next to the fp32 story (first 330 characters, same prompt, greedy; `results/figures/stories_excerpt.txt`):
 
 > **fp32:** Once upon a time, there was a little girl named Lily. She loved to play outside in the sunshine. One day, she saw a big, red ball in the sky. It was the sun! She thought it was so pretty. Lily wanted to play with the ball, but it was too high up in the sky. She tried to jump and reach it, but she couldn't. Then, she had an idea.
 >
@@ -249,30 +249,30 @@ Plans, with no results yet. Step 0: f4 stays the base until a design beats it on
 
 ## 12. Evidence index
 
-Every number above comes from one of these. "Run id" is the grader portal's submission id. Files marked `evidence/` are archives of the build logs, reports and RTL for the runs they name; variant source is in `rce_upload_variants.zip` (one folder per variant, flags in `logs/variants.md`).
+Every number above comes from one of these. "Run id" is the grader portal's submission id. Files marked `results/evidence/` are archives of the build logs, reports and RTL for the runs they name; variant source is in `fpga/variants.zip` (one folder per variant, flags in `results/logs/variants.md`).
 
 | claim | where it comes from |
 |---|---|
-| v3: square 32.70 / N=1 8.80 / N=32 24.03 ms / 57.2 tok/s | run 58; per-case rows in `logs/runidk.md` |
-| e2b 7.27 / 6.68 / 5.72 / 70.0; e2c 7.27 / 6.71 / 5.59 / 64.9 | runs 114 and 116; `evidence/harvest_e2b.zip`, `evidence/harvest_e2c.zip` |
-| a rejected run is still timed on every row | run 76 (FAIL on 32000x288x32 only; all nine rows timed), recorded in `logs/variants.md` |
-| N=1 probes: la 2.981, le 2.952, lb 2.950, pa 2.948 / 2.944 ms on 32000x288 | runs 122, 123, 126, 125; sources are the `fpga_la`, `fpga_le`, `fpga_lb`, `fpga_pa` folders in `rce_upload_variants.zip`; summary in `logs/variants.md` ("N=1 probe results") |
-| the full design's C writes are single-beat (`AWLEN = 1`, 512-bit `gmem2`), no write-burst line in its csynth log | generated RTL in `evidence/rtl_e2_gv.tgz`; csynth log in `evidence/keep_e.zip` (`e2_csyn.log`) |
-| f1: 7.29 / 3.26 / 5.57 ms / 104.1 tok/s at 279.7 MHz; the N=1 fix | run 138; routed timing and build log in `evidence/harvest_f1.zip` |
-| f4: nine runs, medians 7.149 / 3.246 / 5.406 ms / 105.4 tok/s, 281.2 MHz; best-tok/s run 178: 7.141 / 3.242 / 5.400 / 111.31 (the leaderboard run until k2d replaced it) | runs 146-149 (`evidence/portal_runs.zip`), runs 176-179 and 181 (`evidence/portal_runs_176_181.png`, summary rows only); `evidence/harvest_f4.zip` (build log, clock line, routed timing report) |
-| k2d: 262.3 MHz (hbm_aclk 450), 5 h 51 min build, 0 errors; eight runs 184-191, medians 6.456 / 3.244 / 5.281 ms / 106.1 tok/s; selected run 191 | `evidence/portal_runs_184_191.png` (summary rows); the build log and routed timing report were saved on RCE (`~/keep/harvest_k2d.zip`) and are not in this archive; k2d's csynth totals were not archived; its kernel source is identical to k4a's and only the config header differs (RT=6, KUN=2) |
-| k4a: 234.6 MHz (hbm_aclk 403.3), WNS -0.929 ns, worst paths in the B-tile memories; runs 166-168 medians 7.780 / 3.336 / 6.271 ms / 100.8 | `logs/harvest_k4a.zip` (build log, routed timing report, csynth report, `gemm.xclbin.info`); portal rows pasted in the session, recorded in `logs/variants.md` |
-| the ~30 us per-call floor (a read-only kernel takes 0.057 ms on 288x288, f4 0.056 ms) | runs 125 (pa) and 149 in `evidence/portal_runs.zip` |
-| per-call cost of other entries (6-14 us), derived | arithmetic on the 25 public leaderboard rows of 10:48 on 9 October with an assumed 3.2 ms host time; derivation in `logs/variants.md` |
-| sk4 csynth gate (295K LUT, 2,686 DSP, 871 BRAM18, II=1) and its prediction | csynth report output pasted in the session and logged in `logs/variants.md`; source `rce_upload/fpga_sk4`; local gate files were scratch; cosim and hardware not finished |
-| routed WNS -0.242 ns, worst paths one accumulator-enable family; f4 report identical to f1's | `evidence/harvest_f1.zip` and `evidence/harvest_f4.zip` (`*timing_summary_routed.rpt`); RTL of the loop in `evidence/harvest_f4_rtl.tgz` |
-| f3c / f2c fail with "global congestion level 7"; kernel sits in SLR1 (70% / 81% LUT) with SLR0 at 16% | `evidence/harvest_fail.zip` (build logs, `slr_util_placed.rpt`, csynth totals) |
-| csynth totals behind the LUT fit (f1 217K, f3c 320.5K, f2c 374.7K, k4a 292K, k2a 356K) and b6 / b8 | `evidence/keep_e.zip`, `evidence/harvest_fail.zip`, and the gate outputs recorded in `logs/variants.md` and section 10 |
+| v3: square 32.70 / N=1 8.80 / N=32 24.03 ms / 57.2 tok/s | run 58; per-case rows in `results/logs/runidk.md` |
+| e2b 7.27 / 6.68 / 5.72 / 70.0; e2c 7.27 / 6.71 / 5.59 / 64.9 | runs 114 and 116; `results/evidence/harvest_e2b.zip`, `results/evidence/harvest_e2c.zip` |
+| a rejected run is still timed on every row | run 76 (FAIL on 32000x288x32 only; all nine rows timed), recorded in `results/logs/variants.md` |
+| N=1 probes: la 2.981, le 2.952, lb 2.950, pa 2.948 / 2.944 ms on 32000x288 | runs 122, 123, 126, 125; sources are the `fpga_la`, `fpga_le`, `fpga_lb`, `fpga_pa` folders in `fpga/variants.zip`; summary in `results/logs/variants.md` ("N=1 probe results") |
+| the full design's C writes are single-beat (`AWLEN = 1`, 512-bit `gmem2`), no write-burst line in its csynth log | generated RTL in `results/evidence/rtl_e2_gv.tgz`; csynth log in `results/evidence/keep_e.zip` (`e2_csyn.log`) |
+| f1: 7.29 / 3.26 / 5.57 ms / 104.1 tok/s at 279.7 MHz; the N=1 fix | run 138; routed timing and build log in `results/evidence/harvest_f1.zip` |
+| f4: nine runs, medians 7.149 / 3.246 / 5.406 ms / 105.4 tok/s, 281.2 MHz; best-tok/s run 178: 7.141 / 3.242 / 5.400 / 111.31 (the leaderboard run until k2d replaced it) | runs 146-149 (`results/evidence/portal_runs.zip`), runs 176-179 and 181 (`results/evidence/portal_runs_176_181.png`, summary rows only); `results/evidence/harvest_f4.zip` (build log, clock line, routed timing report) |
+| k2d: 262.3 MHz (hbm_aclk 450), 5 h 51 min build, 0 errors; eight runs 184-191, medians 6.456 / 3.244 / 5.281 ms / 106.1 tok/s; selected run 191 | `results/evidence/portal_runs_184_191.png` (summary rows); the build log and routed timing report were saved on RCE (`~/keep/harvest_k2d.zip`) and are not in this archive; k2d's csynth totals were not archived; its kernel source is identical to k4a's and only the config header differs (RT=6, KUN=2) |
+| k4a: 234.6 MHz (hbm_aclk 403.3), WNS -0.929 ns, worst paths in the B-tile memories; runs 166-168 medians 7.780 / 3.336 / 6.271 ms / 100.8 | `results/evidence/harvest_k4a.zip` (build log, routed timing report, csynth report, `gemm.xclbin.info`); portal rows pasted in the session, recorded in `results/logs/variants.md` |
+| the ~30 us per-call floor (a read-only kernel takes 0.057 ms on 288x288, f4 0.056 ms) | runs 125 (pa) and 149 in `results/evidence/portal_runs.zip` |
+| per-call cost of other entries (6-14 us), derived | arithmetic on the 25 public leaderboard rows of 10:48 on 9 October with an assumed 3.2 ms host time; derivation in `results/logs/variants.md` |
+| sk4 csynth gate (295K LUT, 2,686 DSP, 871 BRAM18, II=1) and its prediction | csynth report output pasted in the session and logged in `results/logs/variants.md`; source `rce_upload/fpga_sk4`; local gate files were scratch; cosim and hardware not finished |
+| routed WNS -0.242 ns, worst paths one accumulator-enable family; f4 report identical to f1's | `results/evidence/harvest_f1.zip` and `results/evidence/harvest_f4.zip` (`*timing_summary_routed.rpt`); RTL of the loop in `results/evidence/harvest_f4_rtl.tgz` |
+| f3c / f2c fail with "global congestion level 7"; kernel sits in SLR1 (70% / 81% LUT) with SLR0 at 16% | `results/evidence/harvest_fail.zip` (build logs, `slr_util_placed.rpt`, csynth totals) |
+| csynth totals behind the LUT fit (f1 217K, f3c 320.5K, f2c 374.7K, k4a 292K, k2a 356K) and b6 / b8 | `results/evidence/keep_e.zip`, `results/evidence/harvest_fail.zip`, and the gate outputs recorded in `results/logs/variants.md` and section 10 |
 | leaderboard positions | the portal leaderboard page at the times stated in section 1 (10:48, 19:42, 21:05 and 22:26 on 9 October); screenshots are not included in this archive |
-| Part 1 tables, OpenBLAS ratios, retractions | `BENCHMARKS.md`, `student_gemm.c`, `student_gemm_int8.c`, `bench_openblas.c` |
-| Part 2 CPU profile, batching curve, offload ladder | `notes.md` (sections "Part 2 profile" and "Part 2, everything before the FPGA"), `part2/` |
-| Part 3 seam and sweep | `part3/int8_backend.c`, `part3/build_runq_slm.sh`, `part3/sweep.py`, `part3/results/sweep.json` |
-| fp16 passes the 1e-2 gate, int8 and bf16 do not | `part3/precision_check.py` (prints the table in section 11) |
-| the per-token budget (6.43 ms matmul + 3.2 ms host) | arithmetic from the per-case rows of run 138 in section 4; the same decomposition for runs 100 and 58 uses `logs/runidk.md` |
+| Part 1 tables, OpenBLAS ratios, retractions | `BENCHMARKS.md`, `part1_cpu/student_gemm.c`, `part1_cpu/student_gemm_int8.c`, `part1_cpu/bench_openblas.c` |
+| Part 2 CPU profile, batching curve, offload ladder | `notes.md` (sections "Part 2 profile" and "Part 2, everything before the FPGA"), `part2_batching/` |
+| Part 3 seam and sweep | `part3_int8/int8_backend.c`, `part3_int8/build_runq_slm.sh`, `part3_int8/sweep.py`, `part3_int8/results/sweep.json` |
+| fp16 passes the 1e-2 gate, int8 and bf16 do not | `part3_int8/precision_check.py` (prints the table in section 11) |
+| the per-token budget (6.43 ms matmul + 3.2 ms host) | arithmetic from the per-case rows of run 138 in section 4; the same decomposition for runs 100 and 58 uses `results/logs/runidk.md` |
 
-Not backed by an archived artifact: the portal's per-case rows for runs 114-149 were read from the portal and quoted in this document and `logs/variants.md`; for runs 176-181 only the summary rows (screenshot) are archived. They remain on the portal under the same ids.
+Not backed by an archived artifact: the portal's per-case rows for runs 114-149 were read from the portal and quoted in this document and `results/logs/variants.md`; for runs 176-181 only the summary rows (screenshot) are archived. They remain on the portal under the same ids.

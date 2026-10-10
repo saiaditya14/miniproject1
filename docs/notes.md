@@ -38,12 +38,12 @@
       (2) `acc1`'s update fed back `acc` instead of `acc1`, corrupting row 1
       with row 0's running total. Both caught by diffing against `lmao`'s
       output, not just reading the code.
-- [x] V7 — OpenMP. Not hand-coded in `loop.c` — concept + the real landmine
+- [x] V7 — OpenMP. Not hand-coded in `part1_cpu/loop.c` — concept + the real landmine
       both understood and discussed: `#pragma omp parallel for` on the tile
       loop is close to free in principle, BUT `ap`/`bp`/`cp` are currently
       global/shared, so parallelizing as-is would race; real version needs
       thread-private packing buffers (declared inside the parallelized loop
-      body, or similar). Deferred writing this to the real `student_gemm.c`
+      body, or similar). Deferred writing this to the real `part1_cpu/student_gemm.c`
       rather than grinding it out in the toy file.
 - [ ] V8 — tuning sweep: try a few MC/KC/NC/MR/NR values on the real shapes,
       keep the fastest
@@ -86,8 +86,8 @@ uses information the assignment itself publishes.
 
 ## Status: real files written
 
-- `student_gemm.c` — the real float32 contract. V1-V7 techniques from
-  `loop.c` assembled together (ikj, macro-block packing reused across many
+- `part1_cpu/student_gemm.c` — the real float32 contract. V1-V7 techniques from
+  `part1_cpu/loop.c` assembled together (ikj, macro-block packing reused across many
   microkernel calls, 4x8 register-blocked AVX2/FMA microkernel, OpenMP with
   per-thread packing buffers). Verified correct against a naive reference on
   all 4 real shapes x {N=1, N=32}, maxdiff ~1e-5. Verified via -O3 assembly:
@@ -95,8 +95,8 @@ uses information the assignment itself publishes.
   GEMM microkernel wastes 7/8 of its width when N=1) -- classifier N=1 went
   5.1 -> ~19 GFLOP/s (noisy, sub-ms problem size, but real average uplift).
   Still TODO: V8 tuning sweep; the OpenMP thread-safety fix is in the real
-  file even though it was never hand-coded in loop.c.
-- `student_gemm_int8.c` — real int8 contract. Second pass applied the same
+  file even though it was never hand-coded in part1_cpu/loop.c.
+- `part1_cpu/student_gemm_int8.c` — real int8 contract. Second pass applied the same
   ikj lesson from the float kernel: original version accessed `Bq[k*N+j]`
   with j fixed inside a t-loop (stride-N, same bug as the very first naive
   GEMM before nulmao). Restructured to: per row, per group, broadcast
@@ -283,7 +283,7 @@ N=1 must be compared against sgemv, not sgemm (BENCHMARKS.md has the details).
 
 Question was whether overfitting to the known shapes could beat BLAS. Answer:
 yes, modestly and only in the regime we specialise (N <= 64, these four
-shapes, single thread). Changes in student_gemm.c:
+shapes, single thread). Changes in part1_cpu/student_gemm.c:
 - N 9..64: `gemm_n16_avx2` -- pack only B (K x N, tiny), read A directly from 6
   row streams (no A packing), full K in one pass (no KC blocking, C written once,
   so no memset/accumulate). N 2..8: `gemm_n8_avx2`, 12 rows x 8 cols so the
@@ -344,11 +344,11 @@ reads 73-104 tok/s and f~94% -- same story, different machine/compiler.
 
 ## Part 2, everything before the FPGA (done on CPU, Oct 5-6)
 
-Files (repo): part2/batch_bench.c (batched forward pass, #includes llama2.c's
-run.c unchanged), part2/slm_backend_select.c (offload only chosen shapes).
+Files (repo): part2_batching/batch_bench.c (batched forward pass, #includes llama2.c's
+run.c unchanged), part2_batching/slm_backend_select.c (offload only chosen shapes).
 Build (Windows/GCC14): gcc -O3 -w -Wno-error=incompatible-pointer-types
 -Wno-error=implicit-function-declaration -I<llama2.c> -I<starter/src>
-part2/batch_bench.c <llama2.c>/win.c student_gemm.c -lm ; run from the llama2.c
+part2_batching/batch_bench.c <llama2.c>/win.c part1_cpu/student_gemm.c -lm ; run from the llama2.c
 dir (tokenizer.bin is read from CWD). Usage: batch_bench model.bin B steps [check|show].
 
 1. build_slm seam: story BYTE-IDENTICAL to stock with ours (done earlier).

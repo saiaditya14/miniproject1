@@ -67,7 +67,7 @@ Observation 1 - what limited the clock, layer by layer (measured):
   -> ~3.527 ns = ~283 MHz (+51%). The remaining worst paths are inside our kernel (tl_compute), NOT the shell:
   source = pipeline valid bits (ap_enable_reg_pp0_iter11, icmp_ln411_reg_..._pp0_iter9/10), dest = accumulator regs
   (empty_*, p_load*), 3-4 LUT levels, 3.1-3.4 ns, 89-92% routing. = the valid-bit enable/hold net, ~1.1k loads per process.
-  (Full report: logs/e2_timing_routed.rpt, 5,214 failing endpoints, TNS -329.)
+  (Full report: results/logs/e2_timing_routed.rpt, 5,214 failing endpoints, TNS -329.)
 
 Observation 2 - resources (csynth, per-module):
   FP32 MAC = 5 DSP (3 fmul + 2 fadd). The compute split duplicated the epilogue adders per process (129-193 fadd x2 DSP)
@@ -75,7 +75,7 @@ Observation 2 - resources (csynth, per-module):
   e2: 1413 DSP / 224K LUT / 814 BRAM18 = 47% / 51% / 60% of one SLR. RT=16 (e3) = 2693 DSP (90%), 399K LUT (91%): does not fit one SLR.
   LUT cost ~625 LUT per MAC (float-core glue); 512 MACs is the limit of one SLR.
 
-Observation 3 - cycle model, calibrated against the card (portal ids 100/84/58, logs/runidk.md):
+Observation 3 - cycle model, calibrated against the card (portal ids 100/84/58, results/logs/runidk.md):
   tile = K + 13 (main loop depth) + epilogue. Epilogue chain 63 cyc -> tree epilogue 29 cyc: 364 -> 335 cyc per 8-row tile (e2c, cosim).
   B-tile load 2920 -> 1072 cyc per K=288 call with the B port set to outstanding=64, burst=8 (cause: B reads were not burst-inferred,
   16 outstanding x ~80 cyc latency = 5 cyc/word). Hardware vs cosim: tiled path +1..4%, old gemv +12%.
@@ -114,7 +114,7 @@ Budget: fp32 MAC = 5 DSP (3 multiply, 2 add), so at most about 1,190 MACs (5,952
 
 Risks: no array above 512 MACs has closed timing (RT=10 and RT=12 failed to route; b6 and b8 passed csynth only); builds take 6-7 hours; the square path shares area with the paths that remain.
 
-Variant for sub-1 ms (not needed for 2 ms): reduced-MANTISSA multipliers. Checked 2026-10-10 (mant_check.py, logged in logs/variants.md): keeping 14 explicit mantissa bits on both operands (fp32 exponent, fp32 accumulate) passes the 1e-2 gate with 14x margin on uniform[-1,1] and 3.9x on normal(0,1); 16 bits gives 49x and 15x. fp16 on both operands fails (1.1e-2 to 1.3e-2) because of its 10-bit mantissa. A 15-18 bit significand multiply fits one DSP48E2 (27x18) instead of 3, so a MAC costs 3 DSP and the cap becomes about 2,000 MACs (LUTs then limit). It needs a hand-written multiplier in HLS (split exponent and integer mantissa, integer multiply, fp32 add). The 0.986 ms leaderboard entry (919 GFLOP/s, about 1,500 MACs at 300 MHz) is consistent with something like this; that is inference, not knowledge.
+Variant for sub-1 ms (not needed for 2 ms): reduced-MANTISSA multipliers. Checked 2026-10-10 (mant_check.py, logged in results/logs/variants.md): keeping 14 explicit mantissa bits on both operands (fp32 exponent, fp32 accumulate) passes the 1e-2 gate with 14x margin on uniform[-1,1] and 3.9x on normal(0,1); 16 bits gives 49x and 15x. fp16 on both operands fails (1.1e-2 to 1.3e-2) because of its 10-bit mantissa. A 15-18 bit significand multiply fits one DSP48E2 (27x18) instead of 3, so a MAC costs 3 DSP and the cap becomes about 2,000 MACs (LUTs then limit). It needs a hand-written multiplier in HLS (split exponent and integer mantissa, integer multiply, fp32 add). The 0.986 ms leaderboard entry (919 GFLOP/s, about 1,500 MACs at 300 MHz) is consistent with something like this; that is inference, not knowledge.
 
 Steps in order, each in its own folder and its own build:
 1. fpga_sk2d: k2d plus the persistent streaming A reader (sk4's kernel.cpp with RT=6, KUN=2). Predicted N=32 about 3.9-4.2 ms and square about 5.2-5.6 ms at 262 MHz. Read sk4's routed worst path first (sk4 closed at 123.4 MHz; its cycles were 30% lower on square and 19% lower on N=32 than k4a).

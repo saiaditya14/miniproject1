@@ -19,9 +19,9 @@
 
 extern "C" void gemm(const float *A, const float *B, float *C, int M, int K, int N);
 
-static const size_t COSIM_A_ELEMS = 6144;    /* = depth of A in kernel.cpp (8*768)  */
-static const size_t COSIM_B_ELEMS = 11520;   /* = depth of B in kernel.cpp (288*40) */
-static const size_t COSIM_C_ELEMS = 256;     /* = depth of C in kernel.cpp          */
+static const size_t COSIM_A_ELEMS = 39168;    /* = depth of A in kernel.cpp (8*768)  */
+static const size_t COSIM_B_ELEMS = 18432;   /* = depth of B in kernel.cpp (288*40) */
+static const size_t COSIM_C_ELEMS = 4096;    /* = depth of C in kernel.cpp          */
 
 static float frand(unsigned &st) {
     st = st * 1664525u + 1013904223u;
@@ -71,7 +71,11 @@ int main(int argc, char **argv) {
         std::printf("=== kernel_tb (tiny shapes, cosim-sized buffers) ===\n");
         fails += run_case(16, 288, 1, true);
         fails += run_case(8, 768, 1, true);
-        fails += run_case(4, 288, 40, true);
+        fails += run_case(32, 288, 64, true);
+        fails += run_case(64, 288, 32, true);
+        fails += run_case(128, 288, 32, true);
+        fails += run_case(136, 288, 1, true);
+        fails += run_case(13, 32, 1, true);
     }
     std::printf("=== %s ===\n", fails ? "FAIL" : "ALL PASS");
     return fails ? 1 : 0;
