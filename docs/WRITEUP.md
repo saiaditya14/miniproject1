@@ -183,7 +183,7 @@ Every problem was worked the same way: turn the symptom into a number, build the
 
 ## 8. Reproduce (full text: `REPRODUCE.md`)
 
-Source for every variant is in `fpga/variants.zip` (flags and job ids in `results/logs/variants.md`); the selected design is `fpga/k2d/` and the 256-MAC baseline is `fpga/f4/`. Build, submit and local-gate commands are in `REPRODUCE.md`.
+Source for every variant is in `fpga/variants/` (flags and job ids in `results/logs/variants.md`); the selected design is `fpga/k2d/` and the 256-MAC baseline is `fpga/f4/`. Build, submit and local-gate commands are in `REPRODUCE.md`.
 
 ## 9. Part 3: int8, and where the story breaks
 
@@ -249,14 +249,14 @@ Plans, with no results yet. Step 0: f4 stays the base until a design beats it on
 
 ## 12. Evidence index
 
-Every number above comes from one of these. "Run id" is the grader portal's submission id. Files marked `results/evidence/` are archives of the build logs, reports and RTL for the runs they name; variant source is in `fpga/variants.zip` (one folder per variant, flags in `results/logs/variants.md`).
+Every number above comes from one of these. "Run id" is the grader portal's submission id. Files marked `results/evidence/` are archives of the build logs, reports and RTL for the runs they name; variant source is in `fpga/variants/` (one folder per variant, flags in `results/logs/variants.md`).
 
 | claim | where it comes from |
 |---|---|
 | v3: square 32.70 / N=1 8.80 / N=32 24.03 ms / 57.2 tok/s | run 58; per-case rows in `results/logs/runidk.md` |
 | e2b 7.27 / 6.68 / 5.72 / 70.0; e2c 7.27 / 6.71 / 5.59 / 64.9 | runs 114 and 116; `results/evidence/harvest_e2b.zip`, `results/evidence/harvest_e2c.zip` |
 | a rejected run is still timed on every row | run 76 (FAIL on 32000x288x32 only; all nine rows timed), recorded in `results/logs/variants.md` |
-| N=1 probes: la 2.981, le 2.952, lb 2.950, pa 2.948 / 2.944 ms on 32000x288 | runs 122, 123, 126, 125; sources are the `fpga_la`, `fpga_le`, `fpga_lb`, `fpga_pa` folders in `fpga/variants.zip`; summary in `results/logs/variants.md` ("N=1 probe results") |
+| N=1 probes: la 2.981, le 2.952, lb 2.950, pa 2.948 / 2.944 ms on 32000x288 | runs 122, 123, 126, 125; sources are the `fpga_la`, `fpga_le`, `fpga_lb`, `fpga_pa` folders in `fpga/variants/`; summary in `results/logs/variants.md` ("N=1 probe results") |
 | the full design's C writes are single-beat (`AWLEN = 1`, 512-bit `gmem2`), no write-burst line in its csynth log | generated RTL in `results/evidence/rtl_e2_gv.tgz`; csynth log in `results/evidence/keep_e.zip` (`e2_csyn.log`) |
 | f1: 7.29 / 3.26 / 5.57 ms / 104.1 tok/s at 279.7 MHz; the N=1 fix | run 138; routed timing and build log in `results/evidence/harvest_f1.zip` |
 | f4: nine runs, medians 7.149 / 3.246 / 5.406 ms / 105.4 tok/s, 281.2 MHz; best-tok/s run 178: 7.141 / 3.242 / 5.400 / 111.31 (the leaderboard run until k2d replaced it) | runs 146-149 (`results/evidence/portal_runs.zip`), runs 176-179 and 181 (`results/evidence/portal_runs_176_181.png`, summary rows only); `results/evidence/harvest_f4.zip` (build log, clock line, routed timing report) |

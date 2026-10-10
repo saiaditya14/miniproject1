@@ -21,13 +21,12 @@ HW_TOKEN*
 
 rce_upload.b64
 rce_upload.tar.gz
-rce_upload/**/build/
+fpga/variants/**/build/
 
 logs/*.zip
 logs/*.tgz
 logs/*.rpt
 logs/rtl_*/
-rce_upload/
 
 # course material (problem statements, slides, starter kits)
 mpstatement.pdf

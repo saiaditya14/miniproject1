@@ -1,6 +1,6 @@
 # Reproducing the builds and measurements
 
-Hardware builds run on the RCE cluster (never on the login node). Every variant has its own folder (`fpga/variants.zip`, one folder per variant, flags and job ids in `results/logs/variants.md`); the design behind the selected run 191 is `fpga/k2d/` (the 256-MAC baseline is `fpga/f4/`).
+Hardware builds run on the RCE cluster (never on the login node). Every variant has its own folder (`fpga/variants/`, one folder per variant, flags and job ids in `results/logs/variants.md`); the design behind the selected run 191 is `fpga/k2d/` (the 256-MAC baseline is `fpga/f4/`).
 
 ## Local correctness gate (no Vitis needed)
 
