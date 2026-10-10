@@ -28,3 +28,29 @@ logs/*.tgz
 logs/*.rpt
 logs/rtl_*/
 rce_upload/
+
+# course material (problem statements, slides, starter kits)
+mpstatement.pdf
+part1.pdf
+part2.pdf
+part3.pdf
+lmao.pdf
+lecture/
+_extract/
+fpga-starter-kit.zip
+fpga-starter-kit-alternate.zip
+mini1-gemm-starter.zip
+mini1-gemm-final-starter.zip
+
+# leaderboard snapshots and submission copies (contain other students' roll numbers)
+leaderboard*.pdf
+finalbackupleaderboard.pdf
+sortedbytokensdipshit.pdf
+evidence/leaderboard*.pdf
+logs/leaderboard_*.md
+hereswhatIsubmitted.zip
+2023101096_miniproject1.zip
+
+# internal working notes
+CLAUDE.md
+logs/handoff_*.md
