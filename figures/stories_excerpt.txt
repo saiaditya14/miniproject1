@@ -1,0 +1,11 @@
+fp32:
+Once upon a time, there was a little girl named Lily. She loved to play outside in the sunshine. One day, she saw a big, red ball in the sky. It was the sun! She thought it was so pretty. Lily wanted to play with the ball, but it was too high up in the sky. She tried to jump and reach it, but she couldn't. Then, she had an idea.
+
+int8 GS32:
+Once upon a time, there was a little girl named Lily. She loved to play outside in the sunshine. One day, she saw a big, red ball in the sky. It was the sun! She thought it was so pretty. Lily wanted to play with the ball, but it was too high up in the sky. She tried to jump, but she couldn't reach it. Then, she saw a big, stron
+
+4-bit GS32:
+Once upon a time, there was a little girl named Lily. She loved to play outside and explore the world around her. One day, she found a big rock in her backyard. It was a very big rock and Lily was very excited to play with it. But as she was playing with the rock, she accidentally dropped it and it fell to the ground. Lily was v
+
+2-bit GS32:
+Once upon a time firsthingheshesheshesheserunchunchunchunchunchunchunchunchunchunchunchunchunchunchunchatingating and and and and and and and and and to It stay stay stay reallyococries whole?” it out stay stay stay stay stay stay stay stay stay stay stay stay stay stay stay stay on for okay a sailersousousousous sale firstoc go

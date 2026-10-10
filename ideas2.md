@@ -98,3 +98,31 @@ PROPOSED NEXT STEPS (in order; decide after the e2/e2b/e2c portal numbers)
 - The portal's older flow (student host file bundled with the xclbin) is the way to measure it: ask whether it is still accepted.
 - Routability: single CU can span SLRs (UG1700); `SSI_BalanceSLRs` placement directive is the lever (builds b4a/b6/b8). Per-process overhead about 28K LUT; fabric adders only help once LUTs are available in both SLRs.
 - Paper-shaped checklist: power (xbutil), CPU/GPU baselines on the same model, ablations, one clear claim.
+
+## Square 768^3 at about 1.8-2.1 ms (fp32), written 2026-10-10. All numbers are estimates from measured inputs; nothing here is built.
+
+Where square stands: k2d (384 MACs, 262.3 MHz) 6.436 ms = 141 GFLOP/s = 70% of its array peak. f4 7.14 ms, k4a 7.78 ms.
+
+Why the current tiling caps out: with 32 columns per tile every column tile re-reads all of A from HBM, 24 times for N=768, 56.6 MB. One channel gives 12.5 GB/s, so the tiling has a 4.5 ms floor whatever the array. A bigger array alone does not help (k4a: 512 MACs, 48% busy). Square's operands are small: A, B and C are 2.36 MB each, and URAM holds about 22.5 MB (A needs about 66 of 640 URAMs).
+
+Target design (a dedicated square path; the N=1 and N=32 paths stay, all nine cases must still pass):
+1. Load A and B once, each on its own HBM channel (bank mapping in the xclbin is honoured; variant le ran that way), about 0.2 ms, and keep both on chip in URAM. Safe under the contract: it only holds data within one call.
+2. A 2D output-stationary systolic array, for example 32 x 32 PEs, neighbour-only data movement (A passes right, B passes down), each PE interleaving 8 C elements to cover the 7-cycle fp32 add. Built as hls::stream-connected PE processes of small chains; static loop bounds for 768. This avoids the large fanout nets (B-tile banks, enable nets) that limited every clock so far.
+3. Place the array across both SLRs by construction (two halves of the rows, B passed across through registered stages). The placement directives SSI_BalanceSLRs and SSI_SpreadLogic_high did nothing for us (b4a 233.1 and k4s 238.0 MHz against k4a 234.6).
+
+Budget: fp32 MAC = 5 DSP (3 multiply, 2 add), so at most about 1,190 MACs (5,952 DSP). LUT fit: LUT ~ 86K + 28K x compute processes + 0.29K x MACs. At about 1,150 MACs and 255 MHz: peak 586 GFLOP/s, 85% utilisation about 500 GFLOP/s, compute about 1.8 ms; load and store (about 0.4 ms) partly overlapped gives about 1.8-2.1 ms. That would be 8th place to about 4th on square at the 22:26 board (5th place was 3.82 ms).
+
+Risks: no array above 512 MACs has closed timing (RT=10 and RT=12 failed to route; b6 and b8 passed csynth only); builds take 6-7 hours; the square path shares area with the paths that remain.
+
+Variant for sub-1 ms (not needed for 2 ms): reduced-MANTISSA multipliers. Checked 2026-10-10 (mant_check.py, logged in logs/variants.md): keeping 14 explicit mantissa bits on both operands (fp32 exponent, fp32 accumulate) passes the 1e-2 gate with 14x margin on uniform[-1,1] and 3.9x on normal(0,1); 16 bits gives 49x and 15x. fp16 on both operands fails (1.1e-2 to 1.3e-2) because of its 10-bit mantissa. A 15-18 bit significand multiply fits one DSP48E2 (27x18) instead of 3, so a MAC costs 3 DSP and the cap becomes about 2,000 MACs (LUTs then limit). It needs a hand-written multiplier in HLS (split exponent and integer mantissa, integer multiply, fp32 add). The 0.986 ms leaderboard entry (919 GFLOP/s, about 1,500 MACs at 300 MHz) is consistent with something like this; that is inference, not knowledge.
+
+Steps in order, each in its own folder and its own build:
+1. fpga_sk2d: k2d plus the persistent streaming A reader (sk4's kernel.cpp with RT=6, KUN=2). Predicted N=32 about 3.9-4.2 ms and square about 5.2-5.6 ms at 262 MHz. Read sk4's routed worst path first (sk4 closed at 123.4 MHz; its cycles were 30% lower on square and 19% lower on N=32 than k4a).
+2. fpga_k2d_b: k2d with the B-tile memories forced into BRAM or with registered address and data (the worst-path family in k4a's report). Target about 280 MHz, about 8% on square and N=32. Needs a csynth gate for BRAM.
+3. Resident A for square on k2d's array (URAM, within one call): about 5.0-5.4 ms.
+4. b6 or b8 (768 or 1,024 MACs, already through csynth) with resident A: about 2.6 or 2.0 ms ideal-ish, if the clock closes.
+5. The systolic square path above.
+6. Separate, for tok/s: a null-kernel probe (no memory access, timed on the portal) to learn how much of the 30 us per call is reachable; the leaders' rows imply 6-14 us per call against our 30.
+
+### General lesson from the GEMM builds (written 2026-10-10)
+The lever that moved the compute columns was squeezing more MACs per cycle: K-unrolling took the array from 256 MACs (8 rows x 32 columns x 1) to 384 (6 x 32 x 2) and square fell 10% (7.14 to 6.44 ms). Each step gave less than the MAC count promised, because cycles fell less than the MACs rose (k2d: -16% square cycles for +50% MACs) and the clock fell with size (281, 262, 234 MHz at 256, 384, 512 MACs). The fixed costs that did not shrink were the per-tile restart of the A read, the pipeline and epilogue of every tile, and the B-tile memories that limited the clock. So: more MACs first, then fix whatever stops them from being fed (the streaming A reader, resident operands) and whatever stops the clock (the B-tile memories); and the DSP cost per MAC (5 for fp32, 3 with a reduced-mantissa multiplier) sets how far the MAC count can go.
